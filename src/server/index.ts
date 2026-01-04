@@ -5,6 +5,7 @@ import {
   ExchangePerilTopic,
   GameLogSlug,
   PauseKey,
+  WarRecognitionsPrefix,
 } from "../internal/routing/routing.js";
 import { getInput, printServerHelp } from "../internal/gamelogic/gamelogic.js";
 import { declareAndBind } from "../internal/pubsub/consume.js";

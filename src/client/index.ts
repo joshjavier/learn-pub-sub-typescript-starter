@@ -16,8 +16,9 @@ import {
   ExchangePerilDirect,
   ExchangePerilTopic,
   PauseKey,
+  WarRecognitionsPrefix,
 } from "../internal/routing/routing.js";
-import { handlerMove, handlerPause } from "./handlers.js";
+import { handlerMove, handlerPause, handlerWar } from "./handlers.js";
 
 async function main() {
   const rabbinConnString = "amqp://guest:guest@localhost:5672/";
@@ -39,6 +40,7 @@ async function main() {
 
   const username = await clientWelcome();
   const gs = new GameState(username);
+  const publishChannel = await conn.createConfirmChannel();
 
   await subscribeJSON(
     conn,
@@ -55,10 +57,17 @@ async function main() {
     `${ArmyMovesPrefix}.${username}`,
     `${ArmyMovesPrefix}.*`,
     "transient",
-    handlerMove(gs),
+    handlerMove(gs, publishChannel),
   );
 
-  const publishChannel = await conn.createConfirmChannel();
+  await subscribeJSON(
+    conn,
+    ExchangePerilTopic,
+    WarRecognitionsPrefix,
+    `${WarRecognitionsPrefix}.*`,
+    "durable",
+    handlerWar(gs),
+  );
 
   while (true) {
     const words = await getInput();
