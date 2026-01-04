@@ -50,10 +50,18 @@ async function main() {
     const command = words[0];
     switch (command) {
       case "spawn":
-        commandSpawn(gs, words);
+        try {
+          commandSpawn(gs, words);
+        } catch (err) {
+          console.log((err as Error).message);
+        }
         break;
       case "move":
-        commandMove(gs, words);
+        try {
+          commandMove(gs, words);
+        } catch (err) {
+          console.log((err as Error).message);
+        }
         break;
       case "status":
         await commandStatus(gs);
