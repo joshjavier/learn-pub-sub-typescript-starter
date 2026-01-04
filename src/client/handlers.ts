@@ -50,9 +50,10 @@ export function handlerMove(
               `${WarRecognitionsPrefix}.${gs.getUsername()}`,
               rw,
             );
-            return "NackRequeue";
+            return "Ack";
           } catch (err) {
             console.error("Error publishing war recognition:", err);
+            return "NackRequeue";
           }
         }
         default:
