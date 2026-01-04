@@ -1,4 +1,5 @@
 import type { Channel, ChannelModel, Replies } from "amqplib";
+import { assertUnreachable } from "../utils.js";
 
 export type SimpleQueueType = "durable" | "transient";
 
@@ -64,7 +65,7 @@ export async function subscribeJSON<T>(
         console.log("Rejected message for discarding.");
         break;
       default:
-        throw new Error("Invalid ack type:", ackType);
+        assertUnreachable(ackType);
     }
   });
 }
