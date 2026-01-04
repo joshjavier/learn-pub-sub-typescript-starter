@@ -6,10 +6,14 @@ import {
   printClientHelp,
   printQuit,
 } from "../internal/gamelogic/gamelogic.js";
-import { GameState } from "../internal/gamelogic/gamestate.js";
+import {
+  GameState,
+  type PlayingState,
+} from "../internal/gamelogic/gamestate.js";
 import { commandMove } from "../internal/gamelogic/move.js";
+import { handlePause } from "../internal/gamelogic/pause.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
-import { declareAndBind } from "../internal/pubsub/consume.js";
+import { subscribeJSON } from "../internal/pubsub/consume.js";
 import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
 
 async function main() {
@@ -31,15 +35,24 @@ async function main() {
   });
 
   const username = await clientWelcome();
-  await declareAndBind(
+  // await declareAndBind(
+  //   conn,
+  //   ExchangePerilDirect,
+  //   `${PauseKey}.${username}`,
+  //   PauseKey,
+  //   "transient",
+  // );
+
+  const gs = new GameState(username);
+
+  await subscribeJSON(
     conn,
     ExchangePerilDirect,
     `${PauseKey}.${username}`,
     PauseKey,
     "transient",
+    handlerPause(gs),
   );
-
-  const gs = new GameState(username);
 
   while (true) {
     const words = await getInput();
@@ -80,6 +93,13 @@ async function main() {
         continue;
     }
   }
+}
+
+function handlerPause(gs: GameState): (ps: PlayingState) => void {
+  return (ps) => {
+    handlePause(gs, ps);
+    console.log("> ");
+  };
 }
 
 main().catch((err) => {

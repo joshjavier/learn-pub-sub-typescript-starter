@@ -18,3 +18,35 @@ export async function declareAndBind(
   await channel.bindQueue(queue.queue, exchange, key);
   return [channel, queue];
 }
+
+export async function subscribeJSON<T>(
+  conn: ChannelModel,
+  exchange: string,
+  queueName: string,
+  key: string,
+  queueType: SimpleQueueType,
+  handler: (data: T) => void,
+): Promise<void> {
+  const [channel, queue] = await declareAndBind(
+    conn,
+    exchange,
+    queueName,
+    key,
+    queueType,
+  );
+  await channel.consume(queue.queue, (msg) => {
+    if (!msg) {
+      throw new Error("No message to consume");
+    }
+
+    let data;
+    try {
+      data = JSON.parse(msg.content.toString());
+    } catch {
+      throw new Error("Error parsing JSON");
+    }
+
+    handler(data);
+    channel.ack(msg);
+  });
+}
