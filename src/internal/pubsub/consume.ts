@@ -36,14 +36,15 @@ export async function subscribeJSON<T>(
   );
   await channel.consume(queue.queue, (msg) => {
     if (!msg) {
-      throw new Error("No message to consume");
+      return;
     }
 
     let data;
     try {
       data = JSON.parse(msg.content.toString());
     } catch {
-      throw new Error("Error parsing JSON");
+      console.error("Error parsing JSON");
+      return;
     }
 
     handler(data);

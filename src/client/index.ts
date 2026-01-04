@@ -6,15 +6,12 @@ import {
   printClientHelp,
   printQuit,
 } from "../internal/gamelogic/gamelogic.js";
-import {
-  GameState,
-  type PlayingState,
-} from "../internal/gamelogic/gamestate.js";
+import { GameState } from "../internal/gamelogic/gamestate.js";
 import { commandMove } from "../internal/gamelogic/move.js";
-import { handlePause } from "../internal/gamelogic/pause.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
 import { subscribeJSON } from "../internal/pubsub/consume.js";
 import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
+import { handlerPause } from "./handlers.js";
 
 async function main() {
   const rabbinConnString = "amqp://guest:guest@localhost:5672/";
@@ -35,14 +32,6 @@ async function main() {
   });
 
   const username = await clientWelcome();
-  // await declareAndBind(
-  //   conn,
-  //   ExchangePerilDirect,
-  //   `${PauseKey}.${username}`,
-  //   PauseKey,
-  //   "transient",
-  // );
-
   const gs = new GameState(username);
 
   await subscribeJSON(
@@ -93,13 +82,6 @@ async function main() {
         continue;
     }
   }
-}
-
-function handlerPause(gs: GameState): (ps: PlayingState) => void {
-  return (ps) => {
-    handlePause(gs, ps);
-    console.log("> ");
-  };
 }
 
 main().catch((err) => {
