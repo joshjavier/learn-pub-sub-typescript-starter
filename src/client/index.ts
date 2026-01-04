@@ -10,8 +10,14 @@ import { GameState } from "../internal/gamelogic/gamestate.js";
 import { commandMove } from "../internal/gamelogic/move.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
 import { subscribeJSON } from "../internal/pubsub/consume.js";
-import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
-import { handlerPause } from "./handlers.js";
+import { publishJSON } from "../internal/pubsub/publish.js";
+import {
+  ArmyMovesPrefix,
+  ExchangePerilDirect,
+  ExchangePerilTopic,
+  PauseKey,
+} from "../internal/routing/routing.js";
+import { handlerMove, handlerPause } from "./handlers.js";
 
 async function main() {
   const rabbinConnString = "amqp://guest:guest@localhost:5672/";
@@ -43,6 +49,17 @@ async function main() {
     handlerPause(gs),
   );
 
+  await subscribeJSON(
+    conn,
+    ExchangePerilTopic,
+    `${ArmyMovesPrefix}.${username}`,
+    `${ArmyMovesPrefix}.*`,
+    "transient",
+    handlerMove(gs),
+  );
+
+  const publishChannel = await conn.createConfirmChannel();
+
   while (true) {
     const words = await getInput();
     if (words.length === 0) {
@@ -60,7 +77,13 @@ async function main() {
         break;
       case "move":
         try {
-          commandMove(gs, words);
+          await publishJSON(
+            publishChannel,
+            ExchangePerilTopic,
+            `${ArmyMovesPrefix}.${username}`,
+            commandMove(gs, words),
+          );
+          console.log("Move published successfully");
         } catch (err) {
           console.log((err as Error).message);
         }
