@@ -2,6 +2,7 @@ import amqp from "amqplib";
 import { publishJSON } from "../internal/pubsub/publish.js";
 import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
 import type { PlayingState } from "../internal/gamelogic/gamestate.js";
+import { printServerHelp } from "../internal/gamelogic/gamelogic.js";
 
 async function main() {
   const rabbitConnString = "amqp://guest:guest@localhost:5672/";
@@ -29,6 +30,8 @@ async function main() {
   } catch (err) {
     console.error("Error publishing message:", err);
   }
+
+  printServerHelp();
 }
 
 main().catch((err) => {
