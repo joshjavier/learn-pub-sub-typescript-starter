@@ -1,3 +1,4 @@
+import { encode } from "@msgpack/msgpack";
 import type { ConfirmChannel } from "amqplib";
 
 export function publishJSON<T>(
@@ -14,6 +15,32 @@ export function publishJSON<T>(
       routingKey,
       content,
       { contentType: "application/json" },
+      (err) => {
+        if (err) {
+          reject(new Error("Message was NACKed by the broker"));
+        } else {
+          resolve();
+        }
+      },
+    );
+  });
+}
+
+export function publishMsgPack<T>(
+  ch: ConfirmChannel,
+  exchange: string,
+  routingKey: string,
+  value: T,
+): Promise<void> {
+  const encoded: Uint8Array = encode(value);
+  const content = Buffer.from(encoded);
+
+  return new Promise((resolve, reject) => {
+    ch.publish(
+      exchange,
+      routingKey,
+      content,
+      { contentType: "application/x-msgpack" },
       (err) => {
         if (err) {
           reject(new Error("Message was NACKed by the broker"));
