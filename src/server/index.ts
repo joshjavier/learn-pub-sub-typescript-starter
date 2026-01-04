@@ -1,5 +1,5 @@
 import amqp from "amqplib";
-import { publishJSON } from "../internal/pubsub/pubsub.js";
+import { publishJSON } from "../internal/pubsub/publish.js";
 import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
 import type { PlayingState } from "../internal/gamelogic/gamestate.js";
 
@@ -22,8 +22,13 @@ async function main() {
   });
 
   const channel = await conn.createConfirmChannel();
-  const ps: PlayingState = { isPaused: true };
-  await publishJSON(channel, ExchangePerilDirect, PauseKey, ps);
+
+  try {
+    const pausedState: PlayingState = { isPaused: true };
+    await publishJSON(channel, ExchangePerilDirect, PauseKey, pausedState);
+  } catch (err) {
+    console.error("Error publishing message:", err);
+  }
 }
 
 main().catch((err) => {
