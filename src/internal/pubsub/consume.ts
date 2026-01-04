@@ -2,6 +2,8 @@ import type { Channel, ChannelModel, Replies } from "amqplib";
 
 export type SimpleQueueType = "durable" | "transient";
 
+export type AckType = "Ack" | "NackRequeue" | "NackDiscard";
+
 export async function declareAndBind(
   conn: ChannelModel,
   exchange: string,
@@ -25,7 +27,7 @@ export async function subscribeJSON<T>(
   queueName: string,
   key: string,
   queueType: SimpleQueueType,
-  handler: (data: T) => void,
+  handler: (data: T) => AckType,
 ): Promise<void> {
   const [channel, queue] = await declareAndBind(
     conn,
@@ -47,7 +49,22 @@ export async function subscribeJSON<T>(
       return;
     }
 
-    handler(data);
-    channel.ack(msg);
+    const ackType = handler(data);
+    switch (ackType) {
+      case "Ack":
+        channel.ack(msg);
+        console.log("Acknowledged message delivery.");
+        break;
+      case "NackRequeue":
+        channel.nack(msg, false, true);
+        console.log("Rejected message for requeueing.");
+        break;
+      case "NackDiscard":
+        channel.nack(msg, false, false);
+        console.log("Rejected message for discarding.");
+        break;
+      default:
+        throw new Error("Invalid ack type:", ackType);
+    }
   });
 }
