@@ -16,6 +16,7 @@ import {
   ExchangePerilTopic,
   WarRecognitionsPrefix,
 } from "../internal/routing/routing.js";
+import { publishGameLog } from "./index.js";
 
 export function handlerPause(gs: GameState): (ps: PlayingState) => AckType {
   return (ps) => {
@@ -67,6 +68,7 @@ export function handlerMove(
 
 export function handlerWar(
   gs: GameState,
+  ch: ConfirmChannel,
 ): (rw: RecognitionOfWar) => Promise<AckType> {
   return async (rw) => {
     try {
@@ -79,8 +81,29 @@ export function handlerWar(
           return "NackDiscard";
         case WarOutcome.OpponentWon:
         case WarOutcome.YouWon:
+          try {
+            await publishGameLog(
+              ch,
+              gs.getUsername(),
+              `${warOutcome.winner} won a war against ${warOutcome.loser}`,
+            );
+            return "Ack";
+          } catch (err) {
+            console.error("Error publishing game log:", err);
+            return "NackRequeue";
+          }
         case WarOutcome.Draw:
-          return "Ack";
+          try {
+            await publishGameLog(
+              ch,
+              gs.getUsername(),
+              `A war between ${warOutcome.attacker} and ${warOutcome.defender} resulted in a draw`,
+            );
+            return "Ack";
+          } catch (err) {
+            console.error("Error publishing game log:", err);
+            return "NackRequeue";
+          }
         default: {
           const unreachable: never = warOutcome;
           console.error("Invalid war outcome:", unreachable);
