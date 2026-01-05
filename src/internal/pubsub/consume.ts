@@ -38,6 +38,7 @@ export async function subscribeJSON<T>(
     key,
     queueType,
   );
+  await channel.prefetch(1);
   await channel.consume(queue.queue, async (msg) => {
     if (!msg) {
       return;
@@ -87,6 +88,7 @@ export async function subscribeMsgPack<T>(
     key,
     queueType,
   );
+  await channel.prefetch(1);
   await channel.consume(queue.queue, async (msg) => {
     if (!msg) {
       return;

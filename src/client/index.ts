@@ -3,6 +3,7 @@ import {
   clientWelcome,
   commandStatus,
   getInput,
+  getMaliciousLog,
   printClientHelp,
   printQuit,
 } from "../internal/gamelogic/gamelogic.js";
@@ -106,7 +107,22 @@ async function main() {
         printClientHelp();
         break;
       case "spam":
-        console.log("Spamming not allowed yet!");
+        const n = words[1];
+        if (!n) {
+          console.error("usage: spam <n>");
+          continue;
+        }
+
+        const loop = parseInt(n, 10);
+        for (let i = 0; i < loop; i++) {
+          const log = getMaliciousLog();
+
+          try {
+            await publishGameLog(publishChannel, username, log);
+          } catch (err) {
+            console.error("Error publishiing log message:", err);
+          }
+        }
         break;
       case "quit":
         printQuit();
