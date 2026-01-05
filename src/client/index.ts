@@ -107,22 +107,31 @@ async function main() {
         printClientHelp();
         break;
       case "spam":
-        const n = words[1];
-        if (!n) {
+        const raw = words[1];
+        if (!raw) {
           console.error("usage: spam <n>");
           continue;
         }
 
-        const loop = parseInt(n, 10);
-        for (let i = 0; i < loop; i++) {
+        const n = parseInt(raw, 10);
+        if (isNaN(n)) {
+          console.error("Error: <n> is not a number");
+          continue;
+        }
+
+        for (let i = 0; i < n; i++) {
           const log = getMaliciousLog();
 
           try {
             await publishGameLog(publishChannel, username, log);
           } catch (err) {
-            console.error("Error publishiing log message:", err);
+            console.error(
+              "Error publishiing spam message:",
+              (err as Error).message,
+            );
           }
         }
+        console.log(`Published ${raw} malicious logs`);
         break;
       case "quit":
         printQuit();
