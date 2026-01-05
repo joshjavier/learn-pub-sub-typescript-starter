@@ -70,3 +70,52 @@ export async function subscribeJSON<T>(
     }
   });
 }
+
+export async function subscribeMsgPack<T>(
+  conn: ChannelModel,
+  exchange: string,
+  queueName: string,
+  key: string,
+  queueType: SimpleQueueType,
+  handler: (data: T) => Promise<AckType> | AckType,
+  unmarshaller: (data: Buffer) => T,
+): Promise<void> {
+  const [channel, queue] = await declareAndBind(
+    conn,
+    exchange,
+    queueName,
+    key,
+    queueType,
+  );
+  await channel.consume(queue.queue, async (msg) => {
+    if (!msg) {
+      return;
+    }
+
+    let data: T;
+    try {
+      data = unmarshaller(msg.content);
+    } catch (err) {
+      console.error("Error decoding buffer");
+      return;
+    }
+
+    const ackType = await handler(data);
+    switch (ackType) {
+      case "Ack":
+        channel.ack(msg);
+        console.log("Ack");
+        break;
+      case "NackRequeue":
+        channel.nack(msg, false, true);
+        console.log("NackRequeue");
+        break;
+      case "NackDiscard":
+        channel.nack(msg, false, false);
+        console.log("NackDiscard");
+        break;
+      default:
+        assertUnreachable(ackType);
+    }
+  });
+}
