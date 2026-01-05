@@ -41,6 +41,11 @@ async function main() {
     decode,
   );
 
+  if (!process.stdin.isTTY) {
+    console.log("Non-interactive mode: skipping command input.");
+    return;
+  }
+
   printServerHelp();
 
   while (true) {
