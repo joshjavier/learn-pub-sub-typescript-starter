@@ -9,7 +9,6 @@ import {
 import { getInput, printServerHelp } from "../internal/gamelogic/gamelogic.js";
 import { subscribeMsgPack } from "../internal/pubsub/consume.js";
 import { handlerGameLog } from "./handlers.js";
-import { decode } from "@msgpack/msgpack";
 
 async function main() {
   const rabbitConnString = "amqp://guest:guest@localhost:5672/";
@@ -38,7 +37,6 @@ async function main() {
     `${GameLogSlug}.*`,
     "durable",
     handlerGameLog(),
-    decode,
   );
 
   if (!process.stdin.isTTY) {

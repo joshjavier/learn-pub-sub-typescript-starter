@@ -1,5 +1,5 @@
+import { decode } from "@msgpack/msgpack";
 import type { Channel, ChannelModel, Replies } from "amqplib";
-import { assertUnreachable } from "../utils.js";
 
 export type SimpleQueueType = "durable" | "transient";
 
@@ -23,61 +23,12 @@ export async function declareAndBind(
   return [channel, queue];
 }
 
-export async function subscribeJSON<T>(
+export async function subscribe<T>(
   conn: ChannelModel,
   exchange: string,
   queueName: string,
-  key: string,
-  queueType: SimpleQueueType,
-  handler: (data: T) => Promise<AckType> | AckType,
-): Promise<void> {
-  const [channel, queue] = await declareAndBind(
-    conn,
-    exchange,
-    queueName,
-    key,
-    queueType,
-  );
-  await channel.prefetch(1);
-  await channel.consume(queue.queue, async (msg) => {
-    if (!msg) {
-      return;
-    }
-
-    let data;
-    try {
-      data = JSON.parse(msg.content.toString());
-    } catch {
-      console.error("Error parsing JSON");
-      return;
-    }
-
-    const ackType = await handler(data);
-    switch (ackType) {
-      case "Ack":
-        channel.ack(msg);
-        console.log("Acknowledged message delivery.");
-        break;
-      case "NackRequeue":
-        channel.nack(msg, false, true);
-        console.log("Rejected message for requeueing.");
-        break;
-      case "NackDiscard":
-        channel.nack(msg, false, false);
-        console.log("Rejected message for discarding.");
-        break;
-      default:
-        assertUnreachable(ackType);
-    }
-  });
-}
-
-export async function subscribeMsgPack<T>(
-  conn: ChannelModel,
-  exchange: string,
-  queueName: string,
-  key: string,
-  queueType: SimpleQueueType,
+  routingKey: string,
+  simpleQueueType: SimpleQueueType,
   handler: (data: T) => Promise<AckType> | AckType,
   unmarshaller: (data: Buffer) => T,
 ): Promise<void> {
@@ -85,10 +36,12 @@ export async function subscribeMsgPack<T>(
     conn,
     exchange,
     queueName,
-    key,
-    queueType,
+    routingKey,
+    simpleQueueType,
   );
+
   await channel.prefetch(1);
+
   await channel.consume(queue.queue, async (msg) => {
     if (!msg) {
       return;
@@ -98,26 +51,65 @@ export async function subscribeMsgPack<T>(
     try {
       data = unmarshaller(msg.content);
     } catch (err) {
-      console.error("Error decoding buffer");
+      console.error("Could not decode message:", err);
       return;
     }
 
-    const ackType = await handler(data);
-    switch (ackType) {
-      case "Ack":
-        channel.ack(msg);
-        console.log("Ack");
-        break;
-      case "NackRequeue":
-        channel.nack(msg, false, true);
-        console.log("NackRequeue");
-        break;
-      case "NackDiscard":
-        channel.nack(msg, false, false);
-        console.log("NackDiscard");
-        break;
-      default:
-        assertUnreachable(ackType);
+    try {
+      const ackType = await handler(data);
+      switch (ackType) {
+        case "Ack":
+          channel.ack(msg);
+          console.log("Ack");
+          break;
+        case "NackRequeue":
+          channel.nack(msg, false, true);
+          console.log("NackRequeue");
+          break;
+        case "NackDiscard":
+          channel.nack(msg, false, false);
+          console.log("NackDiscard");
+          break;
+        default: {
+          const unreachable: never = ackType;
+          console.log("Unexpected ack type:", unreachable);
+        }
+      }
+    } catch (err) {
+      console.error("Error in handler:", err);
+      channel.nack(msg, false, false);
     }
   });
+}
+
+export async function subscribeJSON<T>(
+  conn: ChannelModel,
+  exchange: string,
+  queueName: string,
+  key: string,
+  queueType: SimpleQueueType,
+  handler: (data: T) => Promise<AckType> | AckType,
+): Promise<void> {
+  return subscribe(conn, exchange, queueName, key, queueType, handler, (data) =>
+    JSON.parse(data.toString()),
+  );
+}
+
+export async function subscribeMsgPack<T>(
+  conn: ChannelModel,
+  exchange: string,
+  queueName: string,
+  key: string,
+  queueType: SimpleQueueType,
+  handler: (data: T) => Promise<AckType> | AckType,
+): Promise<void> {
+  return subscribe(
+    conn,
+    exchange,
+    queueName,
+    key,
+    queueType,
+    handler,
+    (data) => decode(data) as T,
+  );
 }
